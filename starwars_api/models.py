@@ -22,10 +22,8 @@ class BaseModel(object):
         Returns an object of current Model requesting data to SWAPI using
         the api_client.
         """
-        method_name = "get_{}".format(cls.RESOURCE_NAME)
-        method = getattr(api_client, method_name)
         
-        json_data = method(resource_id)
+        json_data = getattr(api_client, 'get_{}'.format(cls.RESOURCE_NAME))(resource_id)
         return cls(json_data)
         
 
@@ -38,7 +36,6 @@ class BaseModel(object):
         """
         method_name = "{}QuerySet".format(cls.RESOURCE_NAME.title())
         return eval(method_name)()
-        
 
 
 class People(BaseModel):
@@ -67,12 +64,12 @@ class BaseQuerySet(object):
     def __init__(self):
         self.curr_page = 0
         self.curr_elem = 0
-        
         self.objects = []
+        self.total_count = getattr(api_client, 'get_{}'.format(self.RESOURCE_NAME))(**{'page': self.curr_page})['count']
 
     def __iter__(self):
         return self.__class__() 
-# TODO: 
+
     def __next__(self):
         """
         Must handle requests to next pages in SWAPI when objects in the current
@@ -83,7 +80,7 @@ class BaseQuerySet(object):
             if self.curr_elem + 1 > len(self.objects):
             # need to request a new page
                 try:
-                    self._request_next_page()
+                    self._get_next_page()
                 except SWAPIClientError:
                     raise StopIteration()
             elem = self.objects[self.curr_elem]
@@ -91,10 +88,9 @@ class BaseQuerySet(object):
             return elem
         
      
-    def _request_next_page(self): 
+    def _get_next_page(self): 
         self.curr_page += 1
-        method_name = 'get_{}'.format(self.RESOURCE_NAME)
-        method = getattr(api_client, method_name)
+        method = getattr(api_client, 'get_{}'.format(self.RESOURCE_NAME))
         json_data = method(**{'page': self.curr_page})
          
         Model = eval(self.RESOURCE_NAME.title())
@@ -109,7 +105,7 @@ class BaseQuerySet(object):
         If the counter is not persisted as a QuerySet instance attr,
         a new request is performed to the API in order to get it.
         """
-        return api_client._get_swapi('/api/{}'.format(self.RESOURCE_NAME))['count']
+        return self.total_count
         
     
 
